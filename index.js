@@ -1,18 +1,17 @@
 const express = require("express");
 const axios = require("axios");
-const cors = require("cors"); // Import CORS
 require("dotenv").config();
+const cors = require("cors");
 
 const app = express();
-app.use(cors());
 const PORT = 3000;
 
-// Built-in middleware to parse JSON and URL-encoded bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 app.post("/generate-image", async (req, res) => {
-  const { prompt } = req.body;
+  const { prompt, numImages = 4 } = req.body;
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required." });
@@ -25,7 +24,7 @@ app.post("/generate-image", async (req, res) => {
         prompt,
         width: 512,
         height: 512,
-        num_images: 1,
+        num_images: numImages,
         guidance_scale: 7,
         num_inference_steps: 20,
         promptMagic: true
@@ -40,7 +39,7 @@ app.post("/generate-image", async (req, res) => {
 
     const generationId = response.data.sdGenerationJob.generationId;
 
-    let imageUrl = null;
+    let imageUrls = [];
     for (let i = 0; i < 10; i++) {
       const genRes = await axios.get(
         `https://cloud.leonardo.ai/api/rest/v1/generations/${generationId}`,
@@ -53,15 +52,15 @@ app.post("/generate-image", async (req, res) => {
 
       const imageData = genRes.data.generations_by_pk;
       if (imageData && imageData.generated_images.length > 0) {
-        imageUrl = imageData.generated_images[0].url;
+        imageUrls = imageData.generated_images.map(img => img.url);
         break;
       }
 
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    if (imageUrl) {
-      res.json({ imageUrl });
+    if (imageUrls.length > 0) {
+      res.json({ imageUrls });
     } else {
       res.status(202).json({ message: "Image generation in progress. Try again later." });
     }
