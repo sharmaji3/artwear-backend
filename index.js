@@ -1,8 +1,10 @@
 const express = require("express");
 const axios = require("axios");
+const cors = require("cors"); // Import CORS
 require("dotenv").config();
 
 const app = express();
+app.use(cors());
 const PORT = 3000;
 
 // Built-in middleware to parse JSON and URL-encoded bodies
